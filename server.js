@@ -30,14 +30,32 @@ pool.query("SELECT 1")
   .then(() => console.log("✅ DB connected"))
   .catch((err) => console.error("❌ DB connect failed", err));
 // ── 미들웨어 ─────────────────────────────────────
-app.use(cors({
-  origin: process.env.FRONTEND_URL || '*',
-  credentials: true
-}));
+const allowedOrigins = (process.env.FRONTEND_URL || '')
+  .split(',')
+  .map(s => s.trim())
+  .filter(Boolean);
+
+// CORS: FRONTEND_URL이 비어있으면(설정 안 했으면) 모든 Origin 허용(권장: 운영에서는 FRONTEND_URL 지정)
+const corsOptions = {
+  origin: (origin, cb) => {
+    // origin이 없는 경우(서버-서버 호출, curl 등)는 허용
+    if (!origin) return cb(null, true);
+    if (allowedOrigins.length === 0) return cb(null, true);
+    if (allowedOrigins.includes(origin)) return cb(null, true);
+    return cb(null, false);
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: false, // Authorization 헤더 사용이라 쿠키 필요 없음
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions)); // preflight(OPTIONS) 처리
 app.use(express.json());
 
 // ── JWT 인증 미들웨어 ────────────────────────────
 function auth(req, res, next) {
+  if (req.method === 'OPTIONS') return next();
   const token = req.headers.authorization?.split(' ')[1];
   if (!token) return res.status(401).json({ error: '인증이 필요합니다' });
   try {
@@ -283,6 +301,14 @@ app.delete('/api/schedules/:id', auth, async (req, res) => {
   res.json({ ok: true });
 });
 
+app.get('/api', (req, res) => res.json({ ok: true, name: 'paint-inspection-server' }));
+
+// 프로젝트 목록 별칭 (프론트 호환용: /api/projects/list)
+app.get('/api/projects/list', auth, async (req, res) => {
+  const { rows } = await pool.query('SELECT * FROM projects ORDER BY created_at DESC');
+  res.json(rows);
+});
+
 // 협력사 목록 (로그인 전 — 이름/id만 공개)
 app.get('/api/companies/list', async (req, res) => {
   const { rows } = await pool.query('SELECT id, name FROM companies ORDER BY name');
@@ -292,4 +318,4 @@ app.get('/api/companies/list', async (req, res) => {
 // 헬스체크
 app.get('/api/health', (req, res) => res.json({ status: 'ok', time: new Date() }));
 
-app.listen(PORT, () => console.log(`✅ 서버 실행중: http://localhost:${PORT}`));
+app.listen(PORT, () => console.log(`✅ 서버 실행중: PORT ${PORT}`));
