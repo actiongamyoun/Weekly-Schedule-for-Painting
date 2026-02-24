@@ -10,11 +10,25 @@ const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'paint-inspection-secret-2025';
 
 // ── DB 연결 ──────────────────────────────────────
+// --- DB 연결 ---
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
+  ssl: { rejectUnauthorized: false },
 });
 
+// 1) 환경변수 확인 로그 (pool 만든 다음에!)
+console.log("DATABASE_URL exists?", !!process.env.DATABASE_URL);
+console.log(
+  "DATABASE_URL (masked):",
+  process.env.DATABASE_URL
+    ? process.env.DATABASE_URL.replace(/\/\/.*?:.*?@/, "//***:***@")
+    : "MISSING"
+);
+
+// 2) DB 연결 테스트
+pool.query("SELECT 1")
+  .then(() => console.log("✅ DB connected"))
+  .catch((err) => console.error("❌ DB connect failed", err));
 // ── 미들웨어 ─────────────────────────────────────
 app.use(cors({
   origin: process.env.FRONTEND_URL || '*',
