@@ -1,0 +1,2127 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>도장 검사 일정 관리</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
+
+  :root {
+    --navy: #0f1f3d;
+    --navy2: #1a3460;
+    --blue: #1e5bb5;
+    --blue-light: #3b82f6;
+    --accent: #00c6a7;
+    --accent2: #00a88e;
+    --orange: #f59e0b;
+    --red: #ef4444;
+    --green: #10b981;
+    --bg: #f0f4f8;
+    --card: #ffffff;
+    --border: #dde3ed;
+    --text: #1e2a3a;
+    --text2: #5a6a7e;
+    --text3: #96a3b4;
+    --sat: #fee2e2;
+    --sun: #fce7f3;
+    --sat-text: #dc2626;
+    --sun-text: #db2777;
+    --shadow: 0 4px 24px rgba(15,31,61,0.10);
+    --shadow-lg: 0 8px 40px rgba(15,31,61,0.16);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Noto Sans KR', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 14px;
+  }
+
+  /* ── 공통 ── */
+  .mono { font-family: 'DM Mono', monospace; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 9px 20px; border-radius: 8px; border: none;
+    font-family: 'Noto Sans KR', sans-serif; font-size: 13px; font-weight: 600;
+    cursor: pointer; transition: all .18s;
+  }
+  .btn-primary { background: var(--blue); color: #fff; }
+  .btn-primary:hover { background: var(--navy2); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(30,91,181,.3); }
+  .btn-accent { background: var(--accent); color: #fff; }
+  .btn-accent:hover { background: var(--accent2); transform: translateY(-1px); }
+  .btn-outline { background: transparent; color: var(--blue); border: 1.5px solid var(--blue); }
+  .btn-outline:hover { background: var(--blue); color: #fff; }
+  .btn-danger { background: var(--red); color: #fff; }
+  .btn-danger:hover { background: #dc2626; }
+  .btn-sm { padding: 6px 14px; font-size: 12px; }
+  .btn-ghost { background: transparent; color: var(--text2); border: 1.5px solid var(--border); }
+  .btn-ghost:hover { background: var(--bg); }
+
+  input, select, textarea {
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 13px; color: var(--text);
+    border: 1.5px solid var(--border);
+    border-radius: 8px; padding: 9px 12px;
+    outline: none; transition: border .15s, box-shadow .15s;
+    background: #fff; width: 100%;
+  }
+  input:focus, select:focus, textarea:focus {
+    border-color: var(--blue-light);
+    box-shadow: 0 0 0 3px rgba(59,130,246,.12);
+  }
+  label { font-size: 12px; font-weight: 600; color: var(--text2); display: block; margin-bottom: 5px; }
+
+  .card {
+    background: var(--card); border-radius: 16px;
+    box-shadow: var(--shadow); border: 1px solid var(--border);
+    overflow: hidden;
+  }
+  .tag {
+    display: inline-block; padding: 3px 10px; border-radius: 20px;
+    font-size: 11px; font-weight: 600;
+  }
+  .tag-blue { background: #dbeafe; color: #1d4ed8; }
+  .tag-green { background: #d1fae5; color: #065f46; }
+  .tag-orange { background: #fef3c7; color: #92400e; }
+  .tag-red { background: #fee2e2; color: #991b1b; }
+  .tag-gray { background: #f1f5f9; color: #475569; }
+
+  /* ── 화면 전환 ── */
+  .screen { display: none; min-height: 100vh; }
+  .screen.active { display: block; }
+
+  /* ══════════════════════════════════
+     LOGIN SCREEN
+  ══════════════════════════════════ */
+  #screen-login {
+    display: none;
+    background: linear-gradient(135deg, var(--navy) 0%, var(--navy2) 50%, #1e4ba0 100%);
+    align-items: center; justify-content: center;
+    position: relative; overflow: hidden;
+  }
+  #screen-login.active { display: flex; }
+  #screen-login::before {
+    content: '';
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse 600px 400px at 20% 50%, rgba(0,198,167,.08) 0%, transparent 70%),
+      radial-gradient(ellipse 400px 600px at 80% 30%, rgba(30,91,181,.15) 0%, transparent 70%);
+  }
+  .login-grid {
+    position: absolute; inset: 0; overflow: hidden; opacity: .06;
+    background-image: linear-gradient(var(--accent) 1px, transparent 1px),
+                      linear-gradient(90deg, var(--accent) 1px, transparent 1px);
+    background-size: 48px 48px;
+  }
+  .login-box {
+    position: relative; z-index: 1;
+    background: rgba(255,255,255,.04);
+    backdrop-filter: blur(24px);
+    border: 1px solid rgba(255,255,255,.12);
+    border-radius: 24px;
+    padding: 48px 44px;
+    width: 420px;
+    box-shadow: 0 32px 80px rgba(0,0,0,.4);
+  }
+  .login-logo {
+    display: flex; align-items: center; gap: 12px; margin-bottom: 32px;
+  }
+  .login-logo-icon {
+    width: 48px; height: 48px; border-radius: 12px;
+    background: linear-gradient(135deg, var(--accent), var(--blue-light));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+  }
+  .login-logo-text { color: #fff; }
+  .login-logo-text h1 { font-size: 18px; font-weight: 700; line-height: 1.2; }
+  .login-logo-text p { font-size: 11px; color: rgba(255,255,255,.5); margin-top: 2px; }
+  .login-title { color: #fff; font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+  .login-sub { color: rgba(255,255,255,.5); font-size: 13px; margin-bottom: 28px; }
+  .login-field { margin-bottom: 16px; }
+  .login-field label { color: rgba(255,255,255,.6); }
+  .login-field select, .login-field input {
+    background: rgba(255,255,255,.08);
+    border-color: rgba(255,255,255,.15);
+    color: #fff; border-radius: 10px;
+  }
+  .login-field select option { background: var(--navy); }
+  .login-field input::placeholder { color: rgba(255,255,255,.3); }
+  .login-field select:focus, .login-field input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(0,198,167,.2);
+    background: rgba(255,255,255,.12);
+  }
+  .login-btn {
+    width: 100%; padding: 13px; border-radius: 10px; border: none;
+    background: linear-gradient(135deg, var(--accent), var(--blue-light));
+    color: #fff; font-size: 15px; font-weight: 700;
+    cursor: pointer; margin-top: 8px;
+    transition: all .2s;
+    font-family: 'Noto Sans KR', sans-serif;
+  }
+  .login-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,198,167,.4); }
+  .login-err { color: #ff8080; font-size: 12px; margin-top: 8px; display: none; }
+  .login-mode-toggle {
+    text-align: center; margin-top: 20px;
+    color: rgba(255,255,255,.4); font-size: 12px;
+  }
+  .login-mode-toggle span {
+    color: var(--accent); cursor: pointer; font-weight: 600;
+  }
+  .login-mode-toggle span:hover { text-decoration: underline; }
+
+  /* ══════════════════════════════════
+     APP LAYOUT
+  ══════════════════════════════════ */
+  .app-layout { display: flex; min-height: 100vh; }
+
+  /* SIDEBAR */
+  .sidebar {
+    width: 240px; min-height: 100vh;
+    background: var(--navy);
+    display: flex; flex-direction: column;
+    position: fixed; top: 0; left: 0; bottom: 0;
+    z-index: 100;
+  }
+  .sidebar-logo {
+    padding: 22px 20px 18px;
+    border-bottom: 1px solid rgba(255,255,255,.08);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .sidebar-logo-icon {
+    width: 36px; height: 36px; border-radius: 9px;
+    background: linear-gradient(135deg, var(--accent), var(--blue-light));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 17px; flex-shrink: 0;
+  }
+  .sidebar-logo-text { color: #fff; font-size: 14px; font-weight: 700; line-height: 1.3; }
+  .sidebar-logo-sub { color: rgba(255,255,255,.4); font-size: 10px; }
+  .sidebar-user {
+    padding: 14px 20px;
+    border-bottom: 1px solid rgba(255,255,255,.08);
+  }
+  .sidebar-user-role { font-size: 10px; color: var(--accent); font-weight: 600; text-transform: uppercase; letter-spacing: .08em; }
+  .sidebar-user-name { color: #fff; font-size: 14px; font-weight: 600; margin-top: 2px; }
+  .sidebar-nav { padding: 12px 10px; flex: 1; }
+  .nav-section { font-size: 10px; color: rgba(255,255,255,.3); font-weight: 600; letter-spacing: .1em; text-transform: uppercase; padding: 8px 10px 4px; }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px; border-radius: 9px;
+    color: rgba(255,255,255,.55); font-size: 13px; font-weight: 500;
+    cursor: pointer; transition: all .15s; margin-bottom: 2px;
+  }
+  .nav-item:hover { background: rgba(255,255,255,.07); color: rgba(255,255,255,.9); }
+  .nav-item.active { background: rgba(0,198,167,.15); color: var(--accent); }
+  .nav-item .nav-icon { font-size: 16px; width: 20px; text-align: center; }
+  .sidebar-bottom {
+    padding: 14px 10px;
+    border-top: 1px solid rgba(255,255,255,.08);
+  }
+  .logout-btn {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px; border-radius: 9px;
+    color: rgba(255,255,255,.4); font-size: 13px;
+    cursor: pointer; transition: all .15s; width: 100%;
+    background: none; border: none; font-family: inherit;
+  }
+  .logout-btn:hover { background: rgba(239,68,68,.15); color: #ff8080; }
+
+  /* MAIN CONTENT */
+  .main-content {
+    margin-left: 240px; flex: 1;
+    padding: 28px 32px;
+    min-height: 100vh;
+  }
+  .page { display: none; }
+  .page.active { display: block; }
+  .page-header {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    margin-bottom: 24px;
+  }
+  .page-title { font-size: 22px; font-weight: 700; color: var(--navy); }
+  .page-sub { font-size: 13px; color: var(--text2); margin-top: 3px; }
+
+  /* ══════════════════════════════════
+     DASHBOARD (협력사 입력)
+  ══════════════════════════════════ */
+  .week-nav {
+    display: flex; align-items: center; gap: 12px; margin-bottom: 20px;
+  }
+  .week-label {
+    font-size: 16px; font-weight: 700; color: var(--navy);
+    min-width: 200px; text-align: center;
+  }
+  .week-nav .btn { padding: 8px 14px; }
+
+  /* 입력 폼 카드 */
+  .entry-card {
+    background: var(--card); border-radius: 14px;
+    border: 1px solid var(--border); margin-bottom: 12px;
+    overflow: hidden; transition: box-shadow .2s;
+  }
+  .entry-card:hover { box-shadow: var(--shadow); }
+  .entry-card-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 18px;
+    background: linear-gradient(90deg, #f8faff, #fff);
+    border-bottom: 1px solid var(--border);
+  }
+  .entry-num {
+    width: 28px; height: 28px; border-radius: 8px;
+    background: var(--blue); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700;
+  }
+  .entry-card-body { padding: 16px 18px; }
+  .entry-row { display: grid; gap: 12px; margin-bottom: 12px; }
+  .entry-row-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .entry-row-2 { grid-template-columns: 1fr 1fr; }
+  .entry-row-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+
+  /* 주간 달력 */
+  .week-calendar { margin-top: 14px; }
+  .week-cal-header {
+    display: grid; grid-template-columns: 120px repeat(7, 1fr);
+    gap: 4px; margin-bottom: 4px;
+  }
+  .cal-day-hdr {
+    text-align: center; font-size: 11px; font-weight: 700;
+    padding: 8px 4px; border-radius: 7px;
+    background: var(--navy); color: #fff;
+  }
+  .cal-day-hdr.sat { background: var(--sat-text); }
+  .cal-day-hdr.sun { background: var(--sun-text); }
+  .cal-day-hdr .date { font-size: 13px; font-weight: 700; }
+  .cal-day-hdr .dayname { font-size: 10px; opacity: .7; }
+  .cal-row {
+    display: grid; grid-template-columns: 120px repeat(7, 1fr);
+    gap: 4px; margin-bottom: 4px; align-items: start;
+  }
+  .cal-row-label {
+    display: flex; align-items: center; justify-content: flex-end;
+    padding-right: 10px; font-size: 11px; font-weight: 600;
+    color: var(--text2); height: 38px;
+  }
+  .cal-cell {
+    border-radius: 7px; overflow: hidden;
+  }
+  .cal-cell input, .cal-cell textarea {
+    border-radius: 7px; padding: 7px 8px;
+    font-size: 12px; min-height: 38px; resize: none;
+  }
+  .cal-cell.sat input, .cal-cell.sat textarea { background: var(--sat); border-color: #fca5a5; }
+  .cal-cell.sun input, .cal-cell.sun textarea { background: var(--sun); border-color: #f9a8d4; }
+
+  .add-entry-btn {
+    width: 100%; padding: 14px;
+    border: 2px dashed var(--border); border-radius: 12px;
+    background: transparent; color: var(--text3);
+    font-size: 13px; font-weight: 600; cursor: pointer;
+    transition: all .18s; margin-bottom: 16px;
+    font-family: inherit;
+  }
+  .add-entry-btn:hover { border-color: var(--blue); color: var(--blue); background: #f0f7ff; }
+
+  /* 저장된 일정 목록 */
+  .schedule-list { margin-top: 8px; }
+  .schedule-item {
+    background: var(--card); border-radius: 12px;
+    border: 1px solid var(--border); margin-bottom: 8px;
+    overflow: hidden;
+  }
+  .schedule-item-header {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 16px;
+    cursor: pointer;
+  }
+  .schedule-item-header:hover { background: #f8faff; }
+  .schedule-item-info { flex: 1; }
+  .schedule-item-title { font-size: 14px; font-weight: 700; color: var(--navy); }
+  .schedule-item-meta { font-size: 12px; color: var(--text2); margin-top: 2px; }
+  .schedule-item-body {
+    border-top: 1px solid var(--border);
+    padding: 14px 16px;
+    display: none;
+  }
+  .schedule-item-body.open { display: block; }
+
+  /* 달력 테이블 (보기용) */
+  .cal-view-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .cal-view-table th {
+    background: var(--navy); color: #fff;
+    padding: 8px 10px; text-align: center; font-weight: 600;
+  }
+  .cal-view-table th.sat { background: var(--sat-text); }
+  .cal-view-table th.sun { background: var(--sun-text); }
+  .cal-view-table td {
+    padding: 8px 10px; border: 1px solid var(--border);
+    vertical-align: top; text-align: center; min-width: 70px;
+  }
+  .cal-view-table td.sat { background: var(--sat); }
+  .cal-view-table td.sun { background: var(--sun); }
+  .cal-item-text { font-size: 11px; color: var(--text); line-height: 1.4; }
+
+  /* ══════════════════════════════════
+     관리자 — 취합현황
+  ══════════════════════════════════ */
+  .stat-cards {
+    display: grid; grid-template-columns: repeat(2, 1fr);
+    gap: 14px; margin-bottom: 24px;
+  }
+  .stat-card {
+    background: var(--card); border-radius: 14px;
+    border: 1px solid var(--border);
+    padding: 18px 20px;
+  }
+  .stat-card-label { font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: .06em; }
+  .stat-card-value { font-size: 30px; font-weight: 800; color: var(--navy); margin: 4px 0 2px; font-family: 'DM Mono', monospace; }
+  .stat-card-sub { font-size: 11px; color: var(--text2); }
+  .stat-card.blue .stat-card-value { color: var(--blue); }
+  .stat-card.green .stat-card-value { color: var(--green); }
+  .stat-card.orange .stat-card-value { color: var(--orange); }
+
+  .filter-bar {
+    display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap;
+  }
+  .filter-bar select { width: auto; min-width: 140px; }
+
+  .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .data-table th {
+    background: var(--navy); color: #fff;
+    padding: 11px 14px; text-align: left; font-weight: 600; font-size: 12px;
+    position: sticky; top: 0;
+  }
+  .data-table td { padding: 11px 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  .data-table tr:hover td { background: #f8faff; }
+  .data-table tr:last-child td { border-bottom: none; }
+  .table-wrap { border-radius: 14px; overflow: auto; box-shadow: var(--shadow); border: 1px solid var(--border); }
+
+  /* ══════════════════════════════════
+     관리자 — 마스터 데이터 관리
+  ══════════════════════════════════ */
+  .master-tabs {
+    display: flex; gap: 4px; margin-bottom: 20px;
+    background: var(--bg); border-radius: 10px; padding: 4px;
+    width: fit-content;
+  }
+  .master-tab {
+    padding: 8px 18px; border-radius: 7px; cursor: pointer;
+    font-size: 13px; font-weight: 600; color: var(--text2);
+    transition: all .15s;
+  }
+  .master-tab.active { background: var(--card); color: var(--navy); box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+  .master-panel { display: none; }
+  .master-panel.active { display: block; }
+
+  .master-list { margin-top: 12px; }
+  .master-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 16px; background: var(--card);
+    border: 1px solid var(--border); border-radius: 10px;
+    margin-bottom: 8px;
+  }
+  .master-item-info { flex: 1; }
+  .master-item-name { font-size: 14px; font-weight: 600; color: var(--navy); }
+  .master-item-sub { font-size: 12px; color: var(--text2); margin-top: 2px; }
+
+  .add-master-form {
+    background: var(--bg); border-radius: 12px;
+    padding: 18px; margin-bottom: 16px; border: 1px dashed var(--border);
+  }
+  .add-master-form .form-row { display: grid; gap: 10px; margin-bottom: 12px; }
+  .factory-list { margin-top: 8px; }
+  .factory-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 12px; background: #f8faff;
+    border-radius: 7px; margin-bottom: 5px;
+    font-size: 12px; border: 1px solid var(--border);
+  }
+  .factory-item-name { flex: 1; font-weight: 500; }
+
+  /* ══════════════════════════════════
+     선주 공유 화면
+  ══════════════════════════════════ */
+  .owner-filter {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 24px; padding: 18px 20px;
+    background: var(--card); border-radius: 14px;
+    border: 1px solid var(--border); box-shadow: var(--shadow);
+  }
+  .owner-filter label { margin: 0; white-space: nowrap; font-size: 13px; }
+  .owner-filter select { max-width: 280px; }
+
+  .project-schedule-card {
+    background: var(--card); border-radius: 16px;
+    border: 1px solid var(--border); margin-bottom: 16px;
+    overflow: hidden; box-shadow: var(--shadow);
+  }
+  .project-schedule-header {
+    padding: 18px 22px;
+    background: linear-gradient(135deg, var(--navy), var(--navy2));
+    color: #fff;
+  }
+  .project-schedule-title { font-size: 17px; font-weight: 800; }
+  .project-schedule-meta { font-size: 12px; color: rgba(255,255,255,.6); margin-top: 4px; }
+  .project-schedule-body { padding: 18px 22px; }
+  .hull-row {
+    margin-bottom: 14px; padding-bottom: 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .hull-row:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+  .hull-label {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 8px;
+  }
+  .hull-no { font-size: 15px; font-weight: 800; color: var(--navy); font-family: 'DM Mono', monospace; }
+
+  /* ══════════════════════════════════
+     MODAL
+  ══════════════════════════════════ */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(15,31,61,.5); backdrop-filter: blur(4px);
+    z-index: 999; align-items: center; justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--card); border-radius: 20px;
+    padding: 30px; width: 560px; max-width: 95vw;
+    max-height: 85vh; overflow-y: auto;
+    box-shadow: var(--shadow-lg);
+    animation: modalIn .2s ease;
+  }
+  @keyframes modalIn { from { transform: scale(.95) translateY(10px); opacity: 0; } to { transform: none; opacity: 1; } }
+  .modal-title { font-size: 18px; font-weight: 800; color: var(--navy); margin-bottom: 20px; }
+  .modal-footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+
+  /* ══════════════════════════════════
+     TOAST
+  ══════════════════════════════════ */
+  .toast {
+    position: fixed; bottom: 28px; right: 28px;
+    background: var(--navy); color: #fff;
+    padding: 13px 20px; border-radius: 12px;
+    font-size: 13px; font-weight: 600;
+    box-shadow: var(--shadow-lg);
+    z-index: 9999; transform: translateY(60px); opacity: 0;
+    transition: all .3s; display: flex; align-items: center; gap: 8px;
+  }
+  .toast.show { transform: none; opacity: 1; }
+  .toast.success { border-left: 4px solid var(--accent); }
+  .toast.error { border-left: 4px solid var(--red); }
+
+  /* EMPTY STATE */
+  .empty-state {
+    text-align: center; padding: 60px 20px;
+    color: var(--text3);
+  }
+  .empty-state-icon { font-size: 48px; margin-bottom: 12px; }
+  .empty-state-text { font-size: 14px; }
+
+  @media (max-width: 900px) {
+    .sidebar { width: 60px; }
+    .sidebar-logo-text, .sidebar-user, .nav-section, .nav-item span { display: none; }
+    .main-content { margin-left: 60px; padding: 16px; }
+    .stat-cards { grid-template-columns: repeat(2,1fr); }
+  }
+</style>
+</head>
+<body>
+
+<!-- ══════ LOGIN ══════ -->
+<div id="screen-login" class="screen active">
+  <div class="login-grid"></div>
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="login-logo-icon">🎨</div>
+      <div class="login-logo-text">
+        <h1>도장검사<br>일정관리</h1>
+        <p>Paint Inspection Scheduler</p>
+      </div>
+    </div>
+    <div id="login-company-section">
+      <p class="login-title">협력사 로그인</p>
+      <p class="login-sub">협력사를 선택하고 비밀번호를 입력하세요</p>
+      <div class="login-field">
+        <label>협력사 선택</label>
+        <select id="login-company">
+          <option value="">-- 협력사를 선택하세요 --</option>
+        </select>
+      </div>
+      <div class="login-field">
+        <label>비밀번호</label>
+        <input type="password" id="login-pw" placeholder="비밀번호 입력" onkeydown="if(event.key==='Enter')doLogin()">
+      </div>
+      <div class="login-err" id="login-err">비밀번호가 올바르지 않습니다.</div>
+      <button class="login-btn" onclick="doLogin()">로그인</button>
+      <div class="login-mode-toggle">
+        관리자이신가요? <span onclick="showAdminLogin()">관리자 로그인</span>
+      </div>
+    </div>
+    <div id="login-admin-section" style="display:none">
+      <p class="login-title">관리자 로그인</p>
+      <p class="login-sub">관리자 계정으로 로그인하세요</p>
+      <div class="login-field">
+        <label>관리자 비밀번호</label>
+        <input type="password" id="admin-pw" placeholder="관리자 비밀번호" onkeydown="if(event.key==='Enter')doAdminLogin()">
+      </div>
+      <div class="login-err" id="admin-err">비밀번호가 올바르지 않습니다.</div>
+      <button class="login-btn" onclick="doAdminLogin()">관리자 로그인</button>
+      <div class="login-mode-toggle">
+        협력사이신가요? <span onclick="showCompanyLogin()">협력사 로그인</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════ APP ══════ -->
+<div id="screen-app" class="screen">
+  <div class="app-layout">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div class="sidebar-logo">
+        <div class="sidebar-logo-icon">🎨</div>
+        <div class="sidebar-logo-text">
+          <div>도장검사</div>
+          <div class="sidebar-logo-sub">일정관리 시스템</div>
+        </div>
+      </div>
+      <div class="sidebar-user">
+        <div class="sidebar-user-role" id="sb-role">협력사</div>
+        <div class="sidebar-user-name" id="sb-name">-</div>
+      </div>
+      <nav class="sidebar-nav" id="sidebar-nav">
+        <!-- 동적 생성 -->
+      </nav>
+      <div class="sidebar-bottom">
+        <button class="logout-btn" onclick="doLogout()">
+          <span>🚪</span> <span>로그아웃</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="main-content">
+
+      <!-- 협력사: 일정 입력 -->
+      <div class="page" id="page-input">
+        <div class="page-header">
+          <div>
+            <div class="page-title">주차별 검사 일정 입력</div>
+            <div class="page-sub" id="input-company-info">-</div>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-ghost" onclick="loadWeekEntries()">📂 이번 주 불러오기</button>
+            <button class="btn btn-accent" onclick="saveAllEntries()">💾 전체 저장</button>
+          </div>
+        </div>
+
+        <!-- 주차 네비게이션 -->
+        <div class="week-nav">
+          <button class="btn btn-ghost btn-sm" onclick="changeWeek(-1)">◀ 이전 주</button>
+          <div class="week-label" id="week-label">-</div>
+          <button class="btn btn-ghost btn-sm" onclick="changeWeek(1)">다음 주 ▶</button>
+        </div>
+
+        <!-- 입력 카드 목록 -->
+        <div id="entry-list"></div>
+        <button class="add-entry-btn" onclick="addEntry()">＋ 일정 추가</button>
+        <button class="btn btn-accent" onclick="saveAllEntries()" style="width:100%;padding:14px;font-size:14px;">💾 전체 저장</button>
+      </div>
+
+      <!-- 협력사: 내 일정 보기 -->
+      <div class="page" id="page-mylist">
+        <div class="page-header">
+          <div>
+            <div class="page-title">내 검사 일정</div>
+            <div class="page-sub">저장된 검사 일정을 확인하고 수정할 수 있습니다</div>
+          </div>
+        </div>
+        <div class="filter-bar">
+          <select id="mylist-project-filter" onchange="renderMyList()">
+            <option value="">전체 프로젝트</option>
+          </select>
+          <select id="mylist-hull-filter" onchange="renderMyList()">
+            <option value="">전체 Hull No.</option>
+          </select>
+        </div>
+        <div id="mylist-container"></div>
+      </div>
+
+      <!-- 관리자: 취합현황 -->
+      <div class="page" id="page-summary">
+        <div class="page-header">
+          <div>
+            <div class="page-title">전체 취합현황</div>
+            <div class="page-sub">모든 협력사의 검사 일정을 한눈에 확인합니다</div>
+          </div>
+        </div>
+        <div class="stat-cards" id="stat-cards"></div>
+        <div class="filter-bar">
+          <select id="sum-company" onchange="renderSummary()"><option value="">전체 협력사</option></select>
+          <select id="sum-project" onchange="renderSummary()"><option value="">전체 프로젝트</option></select>
+          <select id="sum-hull" onchange="renderSummary()"><option value="">전체 Hull No.</option></select>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>프로젝트명</th><th>Hull No.</th><th>협력사</th>
+                <th>검사장소</th><th>제품</th><th>검사항목</th><th>날짜</th><th>비고</th><th>관리</th>
+              </tr>
+            </thead>
+            <tbody id="summary-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 관리자: 마스터 데이터 -->
+      <div class="page" id="page-master">
+        <div class="page-header">
+          <div>
+            <div class="page-title">마스터 데이터 관리</div>
+            <div class="page-sub">협력사, 프로젝트, Hull No. 목록을 관리합니다</div>
+          </div>
+        </div>
+        <div class="master-tabs">
+          <div class="master-tab active" onclick="switchMasterTab('company')">협력사 관리</div>
+          <div class="master-tab" onclick="switchMasterTab('projhull')">프로젝트 / Hull No.</div>
+          <div class="master-tab" onclick="switchMasterTab('inspitem')">검사항목 관리</div>
+        </div>
+
+        <!-- 협력사 관리 -->
+        <div class="master-panel active" id="mp-company">
+          <div class="add-master-form">
+            <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:14px;">➕ 협력사 추가</div>
+            <div class="form-row" style="grid-template-columns:1fr 1fr 1fr;">
+              <div><label>협력사명</label><input id="new-comp-name" placeholder="예) ABC도장(주)"></div>
+              <div><label>비밀번호</label><input type="password" id="new-comp-pw" placeholder="로그인 비밀번호"></div>
+              <div><label>대표 주소(검사장소)</label><input id="new-comp-addr" placeholder="예) 부산 영도구"></div>
+            </div>
+
+            <button class="btn btn-primary" onclick="addCompany()">협력사 등록</button>
+          </div>
+          <div id="company-list" class="master-list"></div>
+        </div>
+
+        <!-- 프로젝트 + Hull No. 통합 관리 -->
+        <div class="master-panel" id="mp-projhull">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start;">
+            <!-- 왼쪽: 프로젝트 -->
+            <div>
+              <div class="add-master-form" style="margin-bottom:16px;">
+                <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:14px;">➕ 프로젝트 추가</div>
+                <div style="display:grid;gap:10px;margin-bottom:12px;">
+                  <div><label>프로젝트명</label><input id="new-proj-name" placeholder="예) 2025-현대-001"></div>
+                  <div><label>선종 (Type)</label><input id="new-proj-owner" placeholder="예) Tanker, Bulk Carrier"></div>
+                  <div><label>비고</label><input id="new-proj-note" placeholder="선택사항"></div>
+                </div>
+                <button class="btn btn-primary" onclick="addProject()">프로젝트 등록</button>
+              </div>
+              <div id="project-list" class="master-list"></div>
+            </div>
+            <!-- 오른쪽: Hull No. -->
+            <div>
+              <div class="add-master-form" style="margin-bottom:16px;">
+                <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:14px;">➕ Hull No. 일괄 추가</div>
+                <div style="display:grid;gap:10px;margin-bottom:12px;">
+                  <div>
+                    <label>프로젝트 선택</label>
+                    <select id="new-hull-project"><option value="">-- 프로젝트 선택 --</option></select>
+                  </div>
+                  <div>
+                    <label>Hull No. 목록 <span style="color:var(--text3);font-weight:400;">(줄바꿈 또는 쉼표 구분)</span></label>
+                    <textarea id="new-hull-nos" rows="4" placeholder="H-2401&#10;H-2402&#10;H-2403" style="resize:vertical;"></textarea>
+                  </div>
+                </div>
+                <button class="btn btn-primary" onclick="addHullBulk()">일괄 등록</button>
+              </div>
+              <div id="hull-list" class="master-list"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 검사항목 관리 -->
+        <div class="master-panel" id="mp-inspitem">
+          <div class="add-master-form">
+            <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:14px;">➕ 검사항목 추가</div>
+            <div class="form-row" style="grid-template-columns:1fr;">
+              <div><label>검사항목명</label><input id="new-insp-name" placeholder="예) 1st Inspection"></div>
+            </div>
+            <button class="btn btn-primary" onclick="addInspItem()">검사항목 등록</button>
+          </div>
+          <div id="inspitem-list" class="master-list"></div>
+        </div>
+
+      </div>
+
+      <!-- 선주 공유 -->
+      <div class="page" id="page-owner">
+        <div class="page-header">
+          <div>
+            <div class="page-title">선주 공유 일정</div>
+            <div class="page-sub">프로젝트와 주차를 선택하면 일정을 확인할 수 있습니다</div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <div style="display:flex;background:var(--bg);border-radius:8px;padding:3px;border:1.5px solid var(--border);">
+              <button id="lang-ko" class="btn btn-sm" onclick="setOwnerLang('ko')"
+                style="background:var(--navy);color:#fff;border-radius:6px;padding:6px 14px;">한글</button>
+              <button id="lang-en" class="btn btn-sm" onclick="setOwnerLang('en')"
+                style="background:transparent;color:var(--text2);border-radius:6px;padding:6px 14px;">English</button>
+            </div>
+            <button class="btn btn-outline" onclick="printOwnerView()">🖨️ 인쇄/PDF</button>
+          </div>
+        </div>
+        <div class="owner-filter" style="flex-wrap:wrap;gap:12px;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <label style="margin:0;white-space:nowrap;">프로젝트</label>
+            <select id="owner-project-sel" onchange="onOwnerProjectChange()" style="min-width:220px;">
+              <option value="">-- 프로젝트를 선택하세요 --</option>
+            </select>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <label style="margin:0;white-space:nowrap;">주차 선택</label>
+            <select id="owner-week-sel" onchange="renderOwnerView()" style="min-width:180px;">
+              <option value="">전체 주차</option>
+            </select>
+          </div>
+        </div>
+        <div id="owner-content"></div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<!-- ══════ MODAL: 일정 수정 ══════ -->
+<div class="modal-overlay" id="edit-modal">
+  <div class="modal">
+    <div class="modal-title">✏️ 일정 수정</div>
+    <div id="edit-modal-body"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('edit-modal')">취소</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteSchedule()">삭제</button>
+      <button class="btn btn-primary" onclick="saveEditedSchedule()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════ TOAST ══════ -->
+<div class="toast" id="toast"></div>
+
+<script>
+
+// ══════════════════════════════════════════════════
+// API 설정
+// ══════════════════════════════════════════════════
+const API_BASE = 'https://hhi-weekly-schedule-painting.onrender.com';
+let AUTH_TOKEN = '';
+
+async function api(method, path, body) {
+  const opts = {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(AUTH_TOKEN ? { Authorization: 'Bearer ' + AUTH_TOKEN } : {})
+    }
+  };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(API_BASE + path, opts);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || `HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+async function loadFromServer() {
+  try {
+    const [companies, projects, hulls, inspItems, schedules] = await Promise.all([
+      api('GET', '/api/companies'),
+      api('GET', '/api/projects'),
+      api('GET', '/api/hulls'),
+      api('GET', '/api/inspection-items'),
+      api('GET', '/api/schedules')
+    ]);
+    DB.companies = companies.map(c => ({ id: String(c.id), name: c.name, addr: c.addr||'', pw: '' }));
+    DB.projects  = projects.map(p  => ({ id: String(p.id), name: p.name, owner: p.ship_type||'', note: p.note||'' }));
+    DB.hulls     = hulls.map(h     => ({ id: String(h.id), projectId: String(h.project_id), no: h.no }));
+    DB.inspectionItems = inspItems.map(i => ({ id: String(i.id), name: i.name }));
+    DB.schedules = schedules.map(s => ({
+      id: String(s.id),
+      companyId: String(s.company_id),
+      companyName: s.company_name || '',
+      projectId: String(s.project_id || ''),
+      projectName: s.project_name || '',
+      ownerName: s.ship_type || '',
+      hullId: String(s.hull_id),
+      hullNo: s.hull_no || '',
+      location: s.location || '',
+      productName: s.product_name || '',
+      inspItemId: String(s.insp_item_id || ''),
+      inspItemName: s.insp_item_name || '',
+      note: s.note || '',
+      date: s.date ? s.date.substring(0, 10) : '',
+      weekStart: s.week_start ? s.week_start.substring(0, 10) : '',
+      slot: s.slot || 0
+    }));
+    if (typeof initInspColors === 'function') initInspColors();
+    console.log('✅ 서버 데이터 로드 완료');
+  } catch (e) {
+    console.error('서버 연결 실패:', e.message);
+    showToast('⚠️ 서버 연결 실패: ' + e.message, 'error');
+  }
+}
+// ══════════════════════════════════════════════════════════════
+// DATA STORE (localStorage 기반)
+// ══════════════════════════════════════════════════════════════
+// ADMIN_PW 제거 (서버에서 검증)
+
+let DB = {
+  companies: [
+    { id: 'c1', name: 'ABC도장(주)', pw: '1234', addr: '부산 영도구' },
+    { id: 'c2', name: '대한도장산업', pw: '2345', addr: '경남 거제시' },
+    { id: 'c3', name: '한국마린코팅', pw: '3456', addr: '울산 동구' },
+  ],
+  projects: [
+    { id: 'p1', name: '2025-HHI-001', owner: '현대중공업', note: '' },
+    { id: 'p2', name: '2025-SHI-002', owner: '삼성중공업', note: '' },
+  ],
+  hulls: [
+    { id: 'h1', projectId: 'p1', no: 'H-2401' },
+    { id: 'h2', projectId: 'p1', no: 'H-2402' },
+    { id: 'h3', projectId: 'p2', no: 'H-2501' },
+  ],
+  products: [
+    { id: 'pr1', name: 'Block', nameKo: '블록' },
+    { id: 'pr2', name: 'Outfitting', nameKo: '의장품' },
+  ],
+  inspectionItems: [
+    { id: 'ii1', name: '1st Inspection' },
+    { id: 'ii2', name: 'Final Inspection' },
+    { id: 'ii3', name: 'Intermediate Inspection' },
+    { id: 'ii4', name: 'Pre-Inspection' },
+    { id: 'ii5', name: 'Touch-up Inspection' },
+  ],
+  schedules: []
+};
+
+function saveDB() {
+  try { localStorage.setItem('paintDB', JSON.stringify(DB)); } catch(e) {}
+}
+function loadDB() {
+  try {
+    const s = localStorage.getItem('paintDB');
+    if (s) DB = JSON.parse(s);
+  } catch(e) {}
+}
+
+loadDB();
+
+// ══════════════════════════════════════════════════════════════
+// AUTH
+// ══════════════════════════════════════════════════════════════
+let currentUser = null; // { type: 'company'|'admin', company: {...} }
+
+async function initLoginSelect() {
+  const sel = document.getElementById('login-company');
+  sel.innerHTML = '<option value="">-- 협력사를 선택하세요 --</option>';
+  try {
+    const res = await fetch(API_BASE + '/api/companies/list');
+    if (res.ok) {
+      const companies = await res.json();
+      companies.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c.id; opt.textContent = c.name;
+        sel.appendChild(opt);
+      });
+      return;
+    }
+  } catch(e) {}
+  DB.companies.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c.id; opt.textContent = c.name;
+    sel.appendChild(opt);
+  });
+}
+
+function showAdminLogin() {
+  document.getElementById('login-company-section').style.display = 'none';
+  document.getElementById('login-admin-section').style.display = 'block';
+}
+function showCompanyLogin() {
+  document.getElementById('login-company-section').style.display = 'block';
+  document.getElementById('login-admin-section').style.display = 'none';
+}
+
+async function doLogin() {
+  const compId = document.getElementById('login-company').value;
+  const pw = document.getElementById('login-pw').value;
+  const err = document.getElementById('login-err');
+  err.style.display = 'none';
+  if (!compId) { err.textContent = '협력사를 선택해주세요'; err.style.display = 'block'; return; }
+  try {
+    const res = await api('POST', '/api/login', { type: 'company', companyId: compId, password: pw });
+    AUTH_TOKEN = res.token;
+    currentUser = { type: 'company', company: { id: String(res.companyId), name: res.name, addr: res.addr||'', pw:'' } };
+    await loadFromServer();
+    enterApp();
+  } catch(e) {
+    err.textContent = e.message || '로그인 실패';
+    err.style.display = 'block';
+  }
+}
+
+async function doAdminLogin() {
+  const pw = document.getElementById('admin-pw').value;
+  const err = document.getElementById('admin-err');
+  err.style.display = 'none';
+  try {
+    const res = await api('POST', '/api/login', { type: 'admin', password: pw });
+    AUTH_TOKEN = res.token;
+    currentUser = { type: 'admin', role: 'admin' };
+    await loadFromServer();
+    enterApp();
+  } catch(e) {
+    err.textContent = e.message || '비밀번호가 올바르지 않습니다';
+    err.style.display = 'block';
+  }
+}
+
+function doLogout() {
+  currentUser = null;
+  document.getElementById('screen-login').classList.add('active');
+  document.getElementById('screen-app').classList.remove('active');
+  document.getElementById('login-pw').value = '';
+  document.getElementById('admin-pw').value = '';
+  initLoginSelect();
+}
+
+// ══════════════════════════════════════════════════════════════
+// APP INIT
+// ══════════════════════════════════════════════════════════════
+function enterApp() {
+  document.getElementById('screen-login').classList.remove('active');
+  document.getElementById('screen-app').classList.add('active');
+  initInspColors();
+  buildSidebar();
+  if (currentUser.type === 'company') {
+    document.getElementById('sb-role').textContent = '협력사';
+    document.getElementById('sb-name').textContent = currentUser.company.name;
+    initInputPage();
+    showPage('input');
+  } else {
+    document.getElementById('sb-role').textContent = '관리자';
+    document.getElementById('sb-name').textContent = 'Administrator';
+    initAdminPages();
+    showPage('summary');
+  }
+}
+
+function buildSidebar() {
+  const nav = document.getElementById('sidebar-nav');
+  nav.innerHTML = '';
+  if (currentUser.type === 'company') {
+    nav.innerHTML = `
+      <div class="nav-section">메뉴</div>
+      <div class="nav-item active" onclick="showPage('input')"><span class="nav-icon">📝</span><span>일정 입력</span></div>
+      <div class="nav-item" onclick="showPage('mylist')"><span class="nav-icon">📋</span><span>내 일정 보기</span></div>
+    `;
+  } else {
+    nav.innerHTML = `
+      <div class="nav-section">관리자</div>
+      <div class="nav-item active" onclick="showPage('summary')"><span class="nav-icon">📊</span><span>취합현황</span></div>
+      <div class="nav-item" onclick="showPage('master')"><span class="nav-icon">⚙️</span><span>마스터 데이터</span></div>
+      <div class="nav-item" onclick="showPage('owner')"><span class="nav-icon">🚢</span><span>선주 공유</span></div>
+    `;
+  }
+}
+
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const clicked = [...document.querySelectorAll('.nav-item')].find(n => n.getAttribute('onclick')?.includes(`'${id}'`));
+  if (clicked) clicked.classList.add('active');
+  if (id === 'mylist') renderMyList();
+  if (id === 'summary') renderSummary();
+  if (id === 'master') renderMasterData();
+  if (id === 'owner') renderOwnerSelects();
+}
+
+// ══════════════════════════════════════════════════════════════
+// 주차 계산
+// ══════════════════════════════════════════════════════════════
+let currentWeekOffset = 0;
+
+function getWeekStart(offset = 0) {
+  const today = new Date();
+  const day = today.getDay();
+  const diff = (day === 0 ? -6 : 1 - day);
+  const mon = new Date(today);
+  mon.setDate(today.getDate() + diff + offset * 7);
+  mon.setHours(0,0,0,0);
+  return mon;
+}
+
+function formatDate(d) {
+  return d.toISOString().slice(0,10);
+}
+
+function getWeekDates(offset) {
+  const mon = getWeekStart(offset);
+  return Array.from({length:7}, (_,i) => {
+    const d = new Date(mon); d.setDate(mon.getDate()+i); return d;
+  });
+}
+
+function changeWeek(dir) {
+  currentWeekOffset += dir;
+  renderEntries();
+  updateWeekLabel();
+}
+
+function loadWeekEntries() {
+  const comp = currentUser.company;
+  const weekStart = formatDate(getWeekStart(currentWeekOffset));
+  const existing = DB.schedules.filter(s => s.companyId === comp.id && s.weekStart === weekStart);
+  if (existing.length === 0) {
+    showToast('이번 주 저장된 일정이 없습니다', 'error');
+    return;
+  }
+  // 프로젝트+Hull별 그룹핑
+  const groups = {};
+  existing.forEach(s => {
+    const key = (s.hullId||'') + '|' + (s.projectId||'');
+    if (!groups[key]) groups[key] = { projectId: s.projectId, hullId: s.hullId, days: {} };
+    const g = groups[key];
+    if (!g.days[s.date]) g.days[s.date] = [];
+    g.days[s.date].push({ product: s.productName||'', insp: s.inspItemId||'', note: s.note||'' });
+  });
+  entries = Object.values(groups).map(g => ({
+    projectId: g.projectId,
+    hullId: g.hullId,
+    rowCount: Math.max(...Object.values(g.days).map(arr => arr.length), 1),
+    days: g.days
+  }));
+  if (entries.length === 0) entries = [{}];
+  renderEntries();
+  showToast(`✅ ${existing.length}건 불러왔습니다`, 'success');
+}
+
+function updateWeekLabel() {
+  const dates = getWeekDates(currentWeekOffset);
+  const s = dates[0], e = dates[6];
+  const fmt = d => `${d.getMonth()+1}/${d.getDate()}`;
+  document.getElementById('week-label').textContent =
+    `${s.getFullYear()}년 ${s.getMonth()+1}월 ${fmt(s)} (월) ~ ${fmt(e)} (일)`;
+}
+
+// ══════════════════════════════════════════════════════════════
+// 협력사 입력 페이지
+// ══════════════════════════════════════════════════════════════
+let entries = []; // 현재 편집중인 entry 목록
+let editingScheduleId = null;
+
+function initInputPage() {
+  const comp = currentUser.company;
+  document.getElementById('input-company-info').textContent =
+    `${comp.name} · ${comp.addr}`;
+  updateWeekLabel();
+  entries = [{}];
+  renderEntries();
+}
+
+function addEntry() {
+  entries.push({});
+  renderEntries();
+}
+
+function removeEntry(idx) {
+  entries.splice(idx, 1);
+  if (entries.length === 0) entries = [{}];
+  renderEntries();
+}
+
+function renderEntries() {
+  const comp = currentUser.company;
+  const dates = getWeekDates(currentWeekOffset);
+  const dayNames = ['월','화','수','목','금','토','일'];
+  const dayEn = ['MON','TUE','WED','THU','FRI','SAT','SUN'];
+
+  const container = document.getElementById('entry-list');
+  container.innerHTML = entries.map((entry, idx) => {
+    const projOpts = DB.projects.map(p =>
+      `<option value="${p.id}" ${entry.projectId===p.id?'selected':''}>${p.name}</option>`
+    ).join('');
+    const hulls = entry.projectId
+      ? DB.hulls.filter(h => h.projectId === entry.projectId)
+      : DB.hulls;
+    const hullOpts = hulls.map(h =>
+      `<option value="${h.id}" ${entry.hullId===h.id?'selected':''}>${h.no}</option>`
+    ).join('');
+
+    // 날짜 헤더
+    const dateHeaders = `
+      <div style="display:grid;grid-template-columns:90px 120px repeat(7,1fr);gap:3px;margin-bottom:3px;">
+        <div style="background:var(--navy2);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;padding:6px 4px;">날짜</div>
+        <div style="background:var(--navy2);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;padding:6px 4px;">구분</div>
+        ${dates.map((d,i) => `
+          <div style="background:${i===5?'#dc2626':i===6?'#db2777':'var(--navy)'};border-radius:6px;text-align:center;padding:6px 4px;color:#fff;">
+            <div style="font-size:12px;font-weight:700;">${d.getMonth()+1}/${d.getDate()}</div>
+            <div style="font-size:9px;opacity:.7;">${dayNames[i]}</div>
+          </div>
+        `).join('')}
+      </div>`;
+
+    // 각 날짜의 행 수 계산 (최소1, 최대3)
+    if (!entry.days) entry.days = {};
+    // rows: 날짜별로 독립된 행 배열이 아닌, entry-level row 개수 사용
+    // entry.rowCount: 현재 보여주는 행 수 (1~3)
+    if (!entry.rowCount) entry.rowCount = 1;
+    const rowCount = entry.rowCount;
+
+    // 행별로 렌더링 (제품명/검사항목/비고를 rowIdx별로)
+    const dataRows = Array.from({length: rowCount}, (_, rowIdx) => {
+      const rowFields = [
+        { key: `r${rowIdx}_product`,  label: '제품명',   type: 'text' },
+        { key: `r${rowIdx}_insp`,     label: '검사항목', type: 'insp' },
+        { key: `r${rowIdx}_note`,     label: '비고',     type: 'text' },
+      ];
+      return rowFields.map((field, fi) => `
+        <div style="display:grid;grid-template-columns:90px 120px repeat(7,1fr);gap:3px;margin-bottom:3px;">
+          ${fi === 0 ? `<div rowspan="3" style="background:var(--navy);color:#fff;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;grid-row:span 3;">
+            ${rowCount > 1 ? `#${rowIdx+1}` : ''}
+          </div>` : `<div></div>`}
+          <div style="background:var(--bg);border-radius:6px;display:flex;align-items:center;padding:0 8px;font-size:10px;font-weight:600;color:var(--text2);">${field.label}</div>
+          ${dates.map((d,di) => {
+            const dk = formatDate(d);
+            if (!entry.days[dk]) entry.days[dk] = [];
+            while (entry.days[dk].length < rowCount) entry.days[dk].push({});
+            const cellVal = entry.days[dk][rowIdx] ? (entry.days[dk][rowIdx][field.key.split('_')[1]] || '') : '';
+            const satSun = di===5?'background:var(--sat);border-color:#fca5a5;':di===6?'background:var(--sun);border-color:#f9a8d4;':'';
+            if (field.type === 'insp') {
+              return `<div><select onchange="setCellData(${idx},'${dk}',${rowIdx},'insp',this.value)"
+                style="width:100%;border:1.5px solid var(--border);border-radius:6px;padding:5px 4px;font-size:11px;min-height:34px;${satSun}">
+                <option value="">-</option>
+                ${(DB.inspectionItems||[]).map(ii => `<option value="${ii.id}" ${cellVal===ii.id?'selected':''}>${ii.name}</option>`).join('')}
+              </select></div>`;
+            } else {
+              const fld = field.key.includes('product') ? 'product' : 'note';
+              return `<div><input type="text" value="${cellVal}"
+                onchange="setCellData(${idx},'${dk}',${rowIdx},'${fld}',this.value)"
+                style="width:100%;border:1.5px solid var(--border);border-radius:6px;padding:5px 6px;font-size:11px;min-height:34px;${satSun}"></div>`;
+            }
+          }).join('')}
+        </div>
+      `).join('');
+    }).join(`<div style="height:4px;"></div>`);
+
+    const addRowBtn = rowCount < 3
+      ? `<button class="btn btn-ghost btn-sm" onclick="addEntryRow(${idx})" style="margin-top:6px;font-size:11px;">＋ 같은 날 항목 추가</button>`
+      : `<span style="font-size:11px;color:var(--text3);margin-top:6px;display:inline-block;">최대 3건 입력됨</span>`;
+
+    return `
+      <div class="entry-card" id="entry-${idx}">
+        <div class="entry-card-header">
+          <div class="entry-num">${idx+1}</div>
+          <span style="font-size:13px;font-weight:600;color:var(--navy);margin-left:4px;">검사 일정 #${idx+1}</span>
+          <div style="flex:1"></div>
+          ${entries.length > 1 ? `<button class="btn btn-ghost btn-sm" onclick="removeEntry(${idx})">✕ 삭제</button>` : ''}
+        </div>
+        <div class="entry-card-body">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+            <div>
+              <label>프로젝트명 <span style="color:var(--text3)">(선택)</span></label>
+              <select onchange="updateEntryProject(${idx},this.value)">
+                <option value="">-- 프로젝트 선택 --</option>
+                ${projOpts}
+              </select>
+            </div>
+            <div>
+              <label>Hull No. ✱</label>
+              <select onchange="entries[${idx}].hullId=this.value" ${!entry.projectId?'disabled':''}>
+                <option value="">-- Hull No. 선택 --</option>
+                ${hullOpts}
+              </select>
+            </div>
+          </div>
+          <div>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+              <span style="font-size:12px;font-weight:700;color:var(--navy2);">📅 주간 검사 일정</span>
+            </div>
+            ${dateHeaders}
+            ${dataRows}
+            <div>${addRowBtn}</div>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function updateEntryProject(idx, projId) {
+  entries[idx].projectId = projId;
+  entries[idx].hullId = '';
+  renderEntries();
+}
+
+function setDayData(idx, dateKey, field, val) {
+  // legacy - kept for compatibility
+  if (!entries[idx].days) entries[idx].days = {};
+  if (!entries[idx].days[dateKey]) entries[idx].days[dateKey] = [{}];
+  if (!entries[idx].days[dateKey][0]) entries[idx].days[dateKey][0] = {};
+  entries[idx].days[dateKey][0][field] = val;
+}
+
+function setCellData(idx, dateKey, rowIdx, field, val) {
+  if (!entries[idx].days) entries[idx].days = {};
+  if (!entries[idx].days[dateKey]) entries[idx].days[dateKey] = [];
+  while (entries[idx].days[dateKey].length <= rowIdx) entries[idx].days[dateKey].push({});
+  entries[idx].days[dateKey][rowIdx][field] = val;
+}
+
+function addEntryRow(idx) {
+  if (entries[idx].rowCount >= 3) return;
+  entries[idx].rowCount = (entries[idx].rowCount || 1) + 1;
+  renderEntries();
+}
+
+async function saveAllEntries() {
+  const comp = currentUser.company;
+  const weekStart = formatDate(getWeekStart(currentWeekOffset));
+  let saved = 0, failed = 0;
+  for (const entry of entries) {
+    if (!entry.hullId) continue;
+    const hull = DB.hulls.find(h => h.id === entry.hullId);
+    const proj = DB.projects.find(p => p.id === entry.projectId) ||
+                 (hull ? DB.projects.find(p => p.id === hull.projectId) : null);
+    const days = entry.days || {};
+    for (const [date, dayRows] of Object.entries(days)) {
+      const rows = Array.isArray(dayRows) ? dayRows : [dayRows];
+      for (let slot = 0; slot < rows.length; slot++) {
+        const data = rows[slot];
+        if (!data) continue;
+        const product = data.product || '';
+        const inspItemId = data.inspItem || data.insp || '';
+        const note = data.note || '';
+        if (!product && !inspItemId && !note) continue;
+        try {
+          await api('POST', '/api/schedules', {
+            hull_id: entry.hullId,
+            project_id: proj ? proj.id : null,
+            date, week_start: weekStart,
+            product_name: product,
+            insp_item_id: inspItemId || null,
+            note, slot
+          });
+          saved++;
+        } catch(e) { console.error(e); failed++; }
+      }
+    }
+  }
+  await loadFromServer();
+  const msg = failed > 0 ? `⚠️ ${saved}건 저장, ${failed}건 실패` : `✅ ${saved}건 저장되었습니다`;
+  showToast(msg, failed > 0 ? 'error' : 'success');
+  entries = [{}];
+  renderEntries();
+}
+
+// ══════════════════════════════════════════════════════════════
+// 협력사: 내 일정 보기
+// ══════════════════════════════════════════════════════════════
+function renderMyList() {
+  const comp = currentUser.company;
+  const mySchedules = DB.schedules.filter(s => s.companyId === comp.id);
+  const projFilter = document.getElementById('mylist-project-filter').value;
+  const hullFilter = document.getElementById('mylist-hull-filter').value;
+
+  // 필터 옵션 채우기
+  const projSel = document.getElementById('mylist-project-filter');
+  const hullSel = document.getElementById('mylist-hull-filter');
+  const savedProj = projSel.value, savedHull = hullSel.value;
+  projSel.innerHTML = '<option value="">전체 프로젝트</option>';
+  hullSel.innerHTML = '<option value="">전체 Hull No.</option>';
+  [...new Set(mySchedules.map(s=>s.projectName).filter(Boolean))].forEach(p => {
+    projSel.innerHTML += `<option value="${p}" ${savedProj===p?'selected':''}>${p}</option>`;
+  });
+  [...new Set(mySchedules.map(s=>s.hullNo).filter(Boolean))].forEach(h => {
+    hullSel.innerHTML += `<option value="${h}" ${savedHull===h?'selected':''}>${h}</option>`;
+  });
+
+  let filtered = mySchedules;
+  if (projSel.value) filtered = filtered.filter(s => s.projectName === projSel.value);
+  if (hullSel.value) filtered = filtered.filter(s => s.hullNo === hullSel.value);
+
+  const container = document.getElementById('mylist-container');
+  if (filtered.length === 0) {
+    container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📋</div><div class="empty-state-text">저장된 일정이 없습니다</div></div>`;
+    return;
+  }
+
+  // 주차별 그룹핑
+  const byWeek = {};
+  filtered.forEach(s => {
+    if (!byWeek[s.weekStart]) byWeek[s.weekStart] = [];
+    byWeek[s.weekStart].push(s);
+  });
+
+  container.innerHTML = Object.entries(byWeek).sort((a,b) => b[0].localeCompare(a[0])).map(([week, items]) => {
+    const weekEnd = new Date(week);
+    weekEnd.setDate(weekEnd.getDate() + 6);
+    const dayNames = ['월','화','수','목','금','토','일'];
+    const dates = Array.from({length:7}, (_,i) => {
+      const d = new Date(week); d.setDate(d.getDate()+i); return d;
+    });
+
+    // Hull별 그룹
+    const byHull = {};
+    items.forEach(s => {
+      const key = (s.projectName||'미지정') + '|' + (s.hullNo||'미지정');
+      if (!byHull[key]) byHull[key] = { proj: s.projectName, hull: s.hullNo, items: [] };
+      byHull[key].items.push(s);
+    });
+
+    const hullTables = Object.values(byHull).map(hg => {
+      const rows = [
+        {label:'제품명', field:'productName', tag:''},
+        {label:'검사항목', field:'inspItemName', tag:'tag-green'},
+        {label:'비고', field:'note', tag:''}
+      ].map(({label, field, tag}) => `
+        <tr>
+          <td style="font-size:11px;font-weight:600;color:var(--text2);background:var(--bg);white-space:nowrap;">${label}</td>
+          ${dates.map((d,di) => {
+            const dk = formatDate(d);
+            const sc = hg.items.find(s => s.date === dk);
+            const val = sc ? (sc[field]||'') : '';
+            return `<td class="${di===5?'sat':di===6?'sun':''}" style="font-size:11px;">${val?(tag?`<span class="tag ${tag}" style="font-size:10px;">${val}</span>`:val):''}</td>`;
+          }).join('')}
+        </tr>
+      `).join('');
+      return `
+        <div class="hull-row">
+          <div class="hull-label">
+            <span class="hull-no">${hg.hull||'-'}</span>
+            <span class="tag tag-blue" style="font-size:10px;">${hg.proj||'-'}</span>
+
+            <button class="btn btn-ghost btn-sm" style="margin-left:auto;" onclick="openEditModal('${hg.proj}','${hg.hull}','${week}')">✏️ 수정</button>
+          </div>
+          <div style="overflow-x:auto;">
+            <table class="cal-view-table">
+              <thead><tr>
+                <th style="width:60px;">구분</th>
+                ${dates.map((d,i) => `<th class="${i===5?'sat':i===6?'sun':''}">${d.getMonth()+1}/${d.getDate()}<br><span style="font-size:9px;opacity:.7;">${dayNames[i]}</span></th>`).join('')}
+              </tr></thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    return `
+      <div class="schedule-item">
+        <div class="schedule-item-header" onclick="toggleItem(this)">
+          <div style="font-size:18px;">📅</div>
+          <div class="schedule-item-info">
+            <div class="schedule-item-title">${week} ~ ${formatDate(weekEnd)} 주간</div>
+            <div class="schedule-item-meta">${items.length}건의 검사 일정</div>
+          </div>
+          <span style="color:var(--text3);font-size:12px;">▼</span>
+        </div>
+        <div class="schedule-item-body">
+          ${hullTables}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function toggleItem(header) {
+  const body = header.nextElementSibling;
+  body.classList.toggle('open');
+  header.querySelector('span:last-child').textContent = body.classList.contains('open') ? '▲' : '▼';
+}
+
+// ══════════════════════════════════════════════════════════════
+// 수정 모달
+// ══════════════════════════════════════════════════════════════
+let editContext = null;
+
+function openEditModal(projName, hullNo, weekStart) {
+  const comp = currentUser.company;
+  const dates = Array.from({length:7}, (_,i) => {
+    const d = new Date(weekStart); d.setDate(d.getDate()+i); return d;
+  });
+  const dayNames = ['월','화','수','목','금','토','일'];
+  const schedules = DB.schedules.filter(s =>
+    s.companyId === comp.id && s.hullNo === hullNo &&
+    s.projectName === projName && s.weekStart === weekStart
+  );
+
+  editContext = { projName, hullNo, weekStart, companyId: comp.id };
+
+  const prodOptsModal = `<option value="">-</option>` + (DB.products||[]).map(p =>
+    `<option value="${p.id}">${p.name}${p.nameKo?' ('+p.nameKo+')':''}</option>`).join('');
+  const inspOptsModal = `<option value="">-</option>` + (DB.inspectionItems||[]).map(ii =>
+    `<option value="${ii.id}">${ii.name}</option>`).join('');
+
+  document.getElementById('edit-modal-body').innerHTML = `
+    <div style="margin-bottom:14px;">
+      <span class="hull-no" style="font-size:16px;">${hullNo}</span>
+      <span class="tag tag-blue" style="margin-left:8px;">${projName}</span>
+    </div>
+    <div style="overflow-x:auto;">
+      <table style="width:100%;border-collapse:collapse;font-size:12px;">
+        <thead><tr>
+          <th style="background:var(--navy);color:#fff;padding:8px;width:60px;">구분</th>
+          ${dates.map((d,i) => `<th style="background:${i>=5?i===5?'#dc2626':'#db2777':'var(--navy)'};color:#fff;padding:8px;text-align:center;min-width:90px;">${d.getMonth()+1}/${d.getDate()}<br><span style="font-size:9px;">${dayNames[i]}</span></th>`).join('')}
+        </tr></thead>
+        <tbody>
+          ${[
+            {field:'productName', label:'제품명', type:'text'},
+            {field:'inspItemId',  label:'검사항목', type:'insp'},
+            {field:'note',        label:'비고',    type:'text'}
+          ].map(row => `
+            <tr>
+              <td style="background:var(--bg);padding:6px;font-size:11px;font-weight:600;color:var(--text2);">${row.label}</td>
+              ${dates.map((d,di) => {
+                const dk = formatDate(d);
+                const sc = schedules.find(s => s.date === dk);
+                const val = sc ? (sc[row.field]||'') : '';
+                const bgStyle = di>=5?'background:'+(di===5?'#fee2e2':'#fce7f3')+';':'';
+                if (row.type==='insp') {
+                  return `<td style="padding:4px;${bgStyle}">
+                    <select data-date="${dk}" data-field="inspItemId" data-namefield="inspItemName"
+                      style="width:100%;border:1px solid #dde3ed;border-radius:5px;padding:4px;font-size:11px;">
+                      <option value="">-</option>
+                      ${(DB.inspectionItems||[]).map(ii=>`<option value="${ii.id}" ${val===ii.id?'selected':''}>${ii.name}</option>`).join('')}
+                    </select></td>`;
+                } else {
+                  return `<td style="padding:4px;${bgStyle}">
+                    <input type="text" value="${val}" data-date="${dk}" data-field="${row.field}"
+                      style="width:100%;border:1px solid #dde3ed;border-radius:5px;padding:5px 6px;font-size:11px;">
+                  </td>`;
+                }
+              }).join('')}
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+  document.getElementById('edit-modal').classList.add('open');
+}
+
+function saveEditedSchedule() {
+  if (!editContext) return;
+  const { projName, hullNo, weekStart, companyId } = editContext;
+  const comp = currentUser.company;
+  const inputs = document.querySelectorAll('#edit-modal-body [data-date]');
+  const dateMap = {};
+  inputs.forEach(el => {
+    const date = el.dataset.date;
+    const field = el.dataset.field;
+    const val = el.value;
+    if (!dateMap[date]) dateMap[date] = {};
+    dateMap[date][field] = val;
+    if (field === 'inspItemId') {
+      const insp = (DB.inspectionItems||[]).find(ii => ii.id === val);
+      dateMap[date]['inspItemName'] = insp ? insp.name : '';
+    }
+  });
+  const proj = DB.projects.find(p => p.name === projName);
+  const hull = DB.hulls.find(h => h.no === hullNo);
+  Object.entries(dateMap).forEach(([date, data]) => {
+    let sc = DB.schedules.find(s =>
+      s.companyId === companyId && s.hullNo === hullNo &&
+      s.projectName === projName && s.weekStart === weekStart && s.date === date
+    );
+    if (sc) {
+      Object.assign(sc, data);
+    } else if (data.productName || data.inspItemId || data.note) {
+      DB.schedules.push({
+        id: 'sc' + Date.now() + Math.random(),
+        companyId, companyName: comp.name,
+        projectId: proj ? proj.id : '',
+        projectName: projName, ownerName: proj ? proj.owner : '',
+        hullId: hull ? hull.id : '', hullNo,
+        location: comp.addr,
+        productName: data.productName||'',
+        inspItemId: data.inspItemId||'', inspItemName: data.inspItemName||'',
+        note: data.note||'',
+        date, weekStart,
+        createdAt: new Date().toISOString()
+      });
+    }
+  });
+  saveDB();
+  closeModal('edit-modal');
+  renderMyList();
+  showToast('✅ 수정 저장되었습니다', 'success');
+}
+
+function deleteSchedule() {
+  if (!editContext) return;
+  const { projName, hullNo, weekStart, companyId } = editContext;
+  DB.schedules = DB.schedules.filter(s =>
+    !(s.companyId === companyId && s.hullNo === hullNo &&
+      s.projectName === projName && s.weekStart === weekStart)
+  );
+  saveDB();
+  closeModal('edit-modal');
+  renderMyList();
+  showToast('🗑️ 삭제되었습니다', 'success');
+}
+
+// ══════════════════════════════════════════════════════════════
+// 관리자: 취합현황
+// ══════════════════════════════════════════════════════════════
+function initAdminPages() {
+  renderSummaryFilters();
+  renderSummary();
+  renderMasterData();
+  renderOwnerSelects();
+}
+
+function renderSummaryFilters() {
+  const compSel = document.getElementById('sum-company');
+  const projSel = document.getElementById('sum-project');
+  const hullSel = document.getElementById('sum-hull');
+  compSel.innerHTML = '<option value="">전체 협력사</option>';
+  projSel.innerHTML = '<option value="">전체 프로젝트</option>';
+  hullSel.innerHTML = '<option value="">전체 Hull No.</option>';
+  DB.companies.forEach(c => compSel.innerHTML += `<option value="${c.id}">${c.name}</option>`);
+  DB.projects.forEach(p => projSel.innerHTML += `<option value="${p.id}">${p.name}</option>`);
+  DB.hulls.forEach(h => hullSel.innerHTML += `<option value="${h.id}">${h.no}</option>`);
+}
+
+function renderSummary() {
+  const compF = document.getElementById('sum-company').value;
+  const projF = document.getElementById('sum-project').value;
+  const hullF = document.getElementById('sum-hull').value;
+  let data = [...DB.schedules];
+  if (compF) data = data.filter(s => s.companyId === compF);
+  if (projF) data = data.filter(s => s.projectId === projF);
+  if (hullF) data = data.filter(s => s.hullId === hullF);
+
+  // 통계: 이번 주 미등록 협력사
+  const thisWeekStart = formatDate(getWeekStart(0));
+  const registeredThisWeek = new Set(DB.schedules.filter(s=>s.weekStart===thisWeekStart).map(s=>s.companyId));
+  const unregistered = DB.companies.filter(c => !registeredThisWeek.has(c.id));
+  const unregNames = unregistered.map(c=>c.name).join(', ') || '없음';
+  document.getElementById('stat-cards').innerHTML = `
+    <div class="stat-card">
+      <div class="stat-card-label">전체 일정</div>
+      <div class="stat-card-value">${DB.schedules.length}</div>
+      <div class="stat-card-sub">누적 등록 건수</div>
+    </div>
+    <div class="stat-card blue">
+      <div class="stat-card-label">이번 주 등록</div>
+      <div class="stat-card-value">${registeredThisWeek.size} / ${DB.companies.length}</div>
+      <div class="stat-card-sub">협력사 제출 현황</div>
+    </div>
+    <div class="stat-card ${unregistered.length > 0 ? 'orange' : 'green'}" style="grid-column: span 2;">
+      <div class="stat-card-label">⚠️ 이번 주 미등록 협력사 (${unregistered.length}곳)</div>
+      <div style="font-size:13px;font-weight:600;color:${unregistered.length>0?'var(--orange)':'var(--green)'};margin-top:6px;">
+        ${unregistered.length > 0 ? unregNames : '✅ 모든 협력사가 이번 주 일정을 등록했습니다'}
+      </div>
+    </div>
+  `;
+
+  const tbody = document.getElementById('summary-tbody');
+  if (data.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--text3);">등록된 일정이 없습니다</td></tr>';
+    return;
+  }
+  tbody.innerHTML = data.sort((a,b) => a.date.localeCompare(b.date)).map(s => `
+    <tr>
+      <td><span style="font-weight:600;">${s.projectName||'-'}</span></td>
+      <td><span class="mono" style="font-weight:700;">${s.hullNo||'-'}</span></td>
+      <td>${s.companyName}</td>
+      <td>${s.location||'-'}</td>
+      <td>${s.productName||'-'}</td>
+      <td>${s.inspItemName ? `<span class="tag tag-green">${s.inspItemName}</span>` : '-'}</td>
+      <td>${s.date}</td>
+      <td style="color:var(--text2);font-size:12px;">${s.note||'-'}</td>
+      <td><button class="btn btn-ghost btn-sm" onclick="deleteAdminSchedule('${s.id}')">🗑️</button></td>
+    </tr>
+  `).join('');
+}
+
+async function deleteAdminSchedule(id) {
+  if (!confirm('삭제하시겠습니까?')) return;
+  try {
+    await api('DELETE', '/api/schedules/' + id);
+    await loadFromServer();
+    if (typeof renderSummary === 'function') renderSummary();
+    showToast('🗑️ 삭제되었습니다', 'success');
+  } catch(e) { showToast('오류: ' + e.message, 'error'); }
+}
+
+// ══════════════════════════════════════════════════════════════
+// 관리자: 마스터 데이터
+// ══════════════════════════════════════════════════════════════
+function switchMasterTab(tab) {
+  document.querySelectorAll('.master-tab').forEach((t,i) => {
+    const tabs = ['company','projhull','inspitem'];
+    t.classList.toggle('active', tabs[i] === tab);
+  });
+  document.querySelectorAll('.master-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('mp-' + tab).classList.add('active');
+  if (tab === 'projhull') { refreshHullProjectSelect(); renderMasterData(); }
+}
+
+async function addCompany() {
+  const name = document.getElementById('new-comp-name').value.trim();
+  const pw   = document.getElementById('new-comp-pw').value.trim();
+  const addr = document.getElementById('new-comp-addr').value.trim();
+  if (!name || !pw) { showToast('협력사명과 비밀번호를 입력하세요', 'error'); return; }
+  try {
+    await api('POST', '/api/companies', { name, password: pw, addr });
+    await loadFromServer();
+    document.getElementById('new-comp-name').value = '';
+    document.getElementById('new-comp-pw').value = '';
+    document.getElementById('new-comp-addr').value = '';
+    renderMasterData();
+    showToast('✅ 협력사 등록 완료', 'success');
+  } catch(e) { showToast('오류: ' + e.message, 'error'); }
+}
+
+async function addProject() {
+  const name  = document.getElementById('new-proj-name').value.trim();
+  const owner = document.getElementById('new-proj-owner').value.trim();
+  const note  = document.getElementById('new-proj-note').value.trim();
+  if (!name) { showToast('프로젝트명을 입력하세요', 'error'); return; }
+  try {
+    await api('POST', '/api/projects', { name, ship_type: owner, note });
+    await loadFromServer();
+    document.getElementById('new-proj-name').value = '';
+    document.getElementById('new-proj-owner').value = '';
+    document.getElementById('new-proj-note').value = '';
+    renderMasterData();
+    if (typeof refreshHullProjectSelect === 'function') refreshHullProjectSelect();
+    showToast('✅ 프로젝트 등록 완료', 'success');
+  } catch(e) { showToast('오류: ' + e.message, 'error'); }
+}
+
+function refreshHullProjectSelect() {
+  const sel = document.getElementById('new-hull-project');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">-- 프로젝트 선택 --</option>';
+  DB.projects.forEach(p => sel.innerHTML += `<option value="${p.id}" ${cur===p.id?'selected':''}>${p.name}</option>`);
+}
+
+async function addHullBulk() {
+  const projId = document.getElementById('new-hull-project').value;
+  const raw = document.getElementById('new-hull-nos').value.trim();
+  if (!projId) { showToast('프로젝트를 선택하세요', 'error'); return; }
+  if (!raw) { showToast('Hull No.를 입력하세요', 'error'); return; }
+  const nos = [...new Set(raw.split(/[\n,]+/).map(s => s.trim()).filter(Boolean))];
+  try {
+    const res = await api('POST', '/api/hulls/bulk', { project_id: projId, nos });
+    await loadFromServer();
+    document.getElementById('new-hull-nos').value = '';
+    renderMasterData();
+    let msg = `✅ ${res.added.length}개 등록 완료`;
+    if (res.skipped.length) msg += ` (중복 ${res.skipped.length}개 제외)`;
+    showToast(msg, 'success');
+  } catch(e) { showToast('오류: ' + e.message, 'error'); }
+}
+
+// 제품 관리 탭 삭제됨
+
+async function addInspItem() {
+  const inp = document.getElementById('new-insp-name');
+  if (!inp) { showToast('검사항목 입력창을 찾을 수 없습니다', 'error'); return; }
+  const name = inp.value.trim();
+  if (!name) { showToast('검사항목명을 입력하세요', 'error'); return; }
+  try {
+    await api('POST', '/api/inspection-items', { name });
+    await loadFromServer();
+    inp.value = '';
+    if (typeof renderInspList === 'function') renderInspList();
+    showToast('✅ 검사항목 등록 완료', 'success');
+  } catch(e) { showToast('오류: ' + e.message, 'error'); }
+}
+
+function renderInspList() {
+  const inspList = document.getElementById('inspitem-list');
+  if (!inspList) return;
+  const items = DB.inspectionItems || [];
+  inspList.innerHTML = items.length === 0
+    ? '<div class="empty-state"><div class="empty-state-icon">🔍</div><div class="empty-state-text">등록된 검사항목이 없습니다</div></div>'
+    : items.map(ii => `
+        <div class="master-item">
+          <div style="font-size:22px;">🔍</div>
+          <div class="master-item-info">
+            <div class="master-item-name">${ii.name}</div>
+          </div>
+          <div style="display:flex;gap:6px;">
+            <button class="btn btn-ghost btn-sm" onclick="editInspItem('${ii.id}')">수정</button>
+            <button class="btn btn-ghost btn-sm" onclick="deleteInspItem('${ii.id}')">삭제</button>
+          </div>
+        </div>
+      `).join('');
+}
+
+function editInspItem(id) {
+  const ii = (DB.inspectionItems||[]).find(x => x.id === id);
+  if (!ii) return;
+  const newName = prompt('검사항목명:', ii.name);
+  if (newName === null || !newName.trim()) return;
+  ii.name = newName.trim();
+  saveDB(); renderInspList();
+  showToast('✅ 검사항목 수정 완료', 'success');
+}
+
+function renderMasterData() {
+  // 협력사 목록
+  document.getElementById('company-list').innerHTML = DB.companies.map(c => `
+    <div class="master-item">
+      <div style="font-size:22px;">🏢</div>
+      <div class="master-item-info">
+        <div class="master-item-name">${c.name}</div>
+        <div class="master-item-sub">📍 ${c.addr||'주소 없음'} &nbsp;|&nbsp; 🔑 PW: ${'•'.repeat(c.pw.length)}</div>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="deleteCompany('${c.id}')">삭제</button>
+    </div>
+  `).join('') || '<div class="empty-state"><div class="empty-state-icon">🏢</div><div class="empty-state-text">등록된 협력사가 없습니다</div></div>';
+
+  // 프로젝트 목록
+  const projListEl = document.getElementById('project-list');
+  if (projListEl) projListEl.innerHTML = DB.projects.map(p => `
+    <div class="master-item">
+      <div style="font-size:22px;">📁</div>
+      <div class="master-item-info">
+        <div class="master-item-name">${p.name}</div>
+        <div class="master-item-sub">🚢 선종: ${p.owner||'-'} ${p.note?'&nbsp;|&nbsp; 📝 '+p.note:''}</div>
+      </div>
+      <div style="display:flex;gap:6px;">
+        <button class="btn btn-ghost btn-sm" onclick="editProject('${p.id}')">수정</button>
+        <button class="btn btn-ghost btn-sm" onclick="deleteProject('${p.id}')">삭제</button>
+      </div>
+    </div>
+  `).join('') || '<div class="empty-state"><div class="empty-state-icon">📁</div><div class="empty-state-text">등록된 프로젝트가 없습니다</div></div>';
+
+  // Hull 목록 - 프로젝트별 그룹핑
+  const hullListEl = document.getElementById('hull-list');
+  if (hullListEl) {
+    // 프로젝트별로 Hull 그룹핑
+    const hullsByProj = {};
+    DB.hulls.forEach(h => {
+      if (!hullsByProj[h.projectId]) hullsByProj[h.projectId] = [];
+      hullsByProj[h.projectId].push(h);
+    });
+    hullListEl.innerHTML = DB.projects.map(p => {
+      const hulls = hullsByProj[p.id] || [];
+      if (hulls.length === 0) return '';
+      return `
+        <div style="margin-bottom:12px;">
+          <div style="font-size:11px;font-weight:700;color:var(--text2);margin-bottom:6px;padding:4px 8px;background:var(--bg);border-radius:6px;">📁 ${p.name}</div>
+          ${hulls.map(h => `
+            <div class="master-item" style="margin-bottom:6px;">
+              <div style="font-size:18px;">⚓</div>
+              <div class="master-item-info">
+                <div class="master-item-name mono" style="font-size:13px;">${h.no}</div>
+              </div>
+              <div style="display:flex;gap:6px;">
+                <button class="btn btn-ghost btn-sm" onclick="editHull('${h.id}')">수정</button>
+                <button class="btn btn-ghost btn-sm" onclick="deleteHull('${h.id}')">삭제</button>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }).join('') || '<div class="empty-state"><div class="empty-state-icon">⚓</div><div class="empty-state-text">등록된 Hull No.가 없습니다</div></div>';
+  }
+
+  // 제품 관리 탭 삭제됨
+
+  // 검사항목 목록
+  renderInspList();
+
+  renderSummaryFilters();
+}
+
+// deleteProduct 삭제됨
+async function deleteInspItem(id) {
+  if (!confirm('검사항목을 삭제하시겠습니까?')) return;
+  try {
+    await api('DELETE', '/api/inspection-items/' + id);
+    await loadFromServer();
+    if (typeof renderInspList === 'function') renderInspList();
+  } catch(e) { showToast('오류: ' + e.message, 'error'); }
+}
+
+async function deleteCompany(id) {
+  if (!confirm('협력사를 삭제하시겠습니까?')) return;
+  try {
+    await api('DELETE', '/api/companies/' + id);
+    await loadFromServer(); renderMasterData();
+  } catch(e) { showToast('오류: ' + e.message, 'error'); }
+}
+function editProject(id) {
+  const p = DB.projects.find(x => x.id === id);
+  if (!p) return;
+  const newName = prompt('프로젝트명:', p.name);
+  if (newName === null) return;
+  const newOwner = prompt('선종 (Type):', p.owner || '');
+  if (newOwner === null) return;
+  const newNote = prompt('비고:', p.note || '');
+  if (newName.trim()) {
+    p.name = newName.trim();
+    p.owner = newOwner.trim();
+    p.note = (newNote||'').trim();
+    saveDB(); renderMasterData();
+    showToast('✅ 프로젝트 수정 완료', 'success');
+  }
+}
+async function deleteProject(id) {
+  if (!confirm('프로젝트를 삭제하시겠습니까?')) return;
+  try {
+    await api('DELETE', '/api/projects/' + id);
+    await loadFromServer(); renderMasterData();
+  } catch(e) { showToast('오류: ' + e.message, 'error'); }
+}
+function editHull(id) {
+  const h = DB.hulls.find(x => x.id === id);
+  if (!h) return;
+  const newNo = prompt('Hull No.:', h.no);
+  if (newNo === null || !newNo.trim()) return;
+  h.no = newNo.trim();
+  saveDB(); renderMasterData();
+  showToast('✅ Hull No. 수정 완료', 'success');
+}
+async function deleteHull(id) {
+  if (!confirm('Hull No.를 삭제하시겠습니까?')) return;
+  try {
+    await api('DELETE', '/api/hulls/' + id);
+    await loadFromServer();
+    const sel = document.getElementById('new-hull-project');
+    if (typeof renderHullList === 'function') renderHullList(sel ? sel.value : '');
+  } catch(e) { showToast('오류: ' + e.message, 'error'); }
+}
+
+// ══════════════════════════════════════════════════════════════
+// 선주 공유 화면
+// ══════════════════════════════════════════════════════════════
+// 언어 설정
+let ownerLang = 'ko';
+function setOwnerLang(lang) {
+  ownerLang = lang;
+  document.getElementById('lang-ko').style.background = lang==='ko'?'var(--navy)':'transparent';
+  document.getElementById('lang-ko').style.color = lang==='ko'?'#fff':'var(--text2)';
+  document.getElementById('lang-en').style.background = lang==='en'?'var(--navy)':'transparent';
+  document.getElementById('lang-en').style.color = lang==='en'?'#fff':'var(--text2)';
+  renderOwnerView();
+}
+
+// 검사항목별 색상 팔레트 (항목 ID → 색상 고정)
+const INSP_COLORS = [
+  { bg:'#dbeafe', text:'#1d4ed8' }, // 파랑
+  { bg:'#d1fae5', text:'#065f46' }, // 초록
+  { bg:'#fef3c7', text:'#92400e' }, // 노랑
+  { bg:'#fce7f3', text:'#9d174d' }, // 분홍
+  { bg:'#ede9fe', text:'#5b21b6' }, // 보라
+  { bg:'#ffedd5', text:'#9a3412' }, // 주황
+  { bg:'#e0f2fe', text:'#075985' }, // 하늘
+  { bg:'#dcfce7', text:'#14532d' }, // 연두
+];
+const inspColorMap = {};
+function getInspColor(inspItemId) {
+  if (!inspItemId) return null;
+  if (!inspColorMap[inspItemId]) {
+    const idx = Object.keys(inspColorMap).length % INSP_COLORS.length;
+    inspColorMap[inspItemId] = INSP_COLORS[idx];
+  }
+  return inspColorMap[inspItemId];
+}
+// 앱 시작 시 기존 항목 색상 미리 할당
+function initInspColors() {
+  (DB.inspectionItems||[]).forEach(ii => getInspColor(ii.id));
+}
+
+function renderOwnerSelects() {
+  const sel = document.getElementById('owner-project-sel');
+  const cur = sel ? sel.value : '';
+  if (sel) {
+    sel.innerHTML = '<option value="">-- 프로젝트를 선택하세요 --</option>';
+    DB.projects.forEach(p => sel.innerHTML += `<option value="${p.id}" ${cur===p.id?'selected':''}>${p.name} (${p.owner||''})</option>`);
+  }
+}
+
+function onOwnerProjectChange() {
+  const projId = document.getElementById('owner-project-sel').value;
+  // 주차 목록 갱신
+  const weekSel = document.getElementById('owner-week-sel');
+  const schedules = DB.schedules.filter(s => s.projectId === projId);
+  const weeks = [...new Set(schedules.map(s => s.weekStart))].sort();
+  weekSel.innerHTML = '<option value="">전체 주차</option>';
+  weeks.forEach(w => {
+    const end = new Date(w); end.setDate(end.getDate()+6);
+    const label = `${w} ~ ${formatDate(end)}`;
+    weekSel.innerHTML += `<option value="${w}">${label}</option>`;
+  });
+  renderOwnerView();
+}
+
+// 언어별 텍스트
+const T = {
+  ko: {
+    company: '협력사', hull: 'Hull No.', section: '구분',
+    product: '제품명', insp: '검사항목', note: '비고',
+    week: '주간', project: '프로젝트', shiptype: '선종',
+    ships: '척', days: ['월','화','수','목','금','토','일'],
+  },
+  en: {
+    company: 'Company', hull: 'Hull No.', section: 'Category',
+    product: 'Product', insp: 'Inspection', note: 'Remarks',
+    week: 'Week', project: 'Project', shiptype: 'Type',
+    ships: 'ships', days: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],
+  }
+};
+
+function renderOwnerView() {
+  const projId = document.getElementById('owner-project-sel').value;
+  const weekFilter = document.getElementById('owner-week-sel') ? document.getElementById('owner-week-sel').value : '';
+  const container = document.getElementById('owner-content');
+  if (!projId) { container.innerHTML = ''; return; }
+  const proj = DB.projects.find(p => p.id === projId);
+  let schedules = DB.schedules.filter(s => s.projectId === projId);
+  if (weekFilter) schedules = schedules.filter(s => s.weekStart === weekFilter);
+  const lang = T[ownerLang] || T.ko;
+
+  if (schedules.length === 0) {
+    container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📋</div><div class="empty-state-text">등록된 일정이 없습니다</div></div>`;
+    return;
+  }
+
+  // 주차 목록
+  const weeks = [...new Set(schedules.map(s => s.weekStart))].sort();
+  // Hull 목록
+  const projHulls = DB.hulls.filter(h => h.projectId === projId).map(h => h.no);
+  const schedHulls = [...new Set(schedules.map(s => s.hullNo).filter(Boolean))];
+  const allHulls = [...new Set([...projHulls, ...schedHulls])];
+
+  // 협력사 목록 (가나다순)
+  const allCompanies = [...new Set(schedules.map(s => s.companyName).filter(Boolean))].sort();
+
+  const weekBlocks = weeks.map(week => {
+    const wSchedules = schedules.filter(s => s.weekStart === week);
+    const dates = Array.from({length:7}, (_,i) => {
+      const d = new Date(week); d.setDate(d.getDate()+i); return d;
+    });
+    const weekEnd = new Date(week); weekEnd.setDate(weekEnd.getDate()+6);
+
+    // 협력사별 × Hull별로 그룹핑, 첫 열: 협력사명
+    // 구조: 협력사 → Hull No. → 3행 (제품명/검사항목/비고)
+    const compRows = allCompanies.map(compName => {
+      const compSched = wSchedules.filter(s => s.companyName === compName);
+      const compHulls = [...new Set(compSched.map(s => s.hullNo).filter(Boolean))];
+      if (compHulls.length === 0) return '';
+
+      // 각 Hull은 1행: 날짜 셀 안에 (제품명 + 검사항목) 쌍을 세로로 나열
+      const hullRows = compHulls.map((hullNo, hi) => {
+        const hullSched = compSched.filter(s => s.hullNo === hullNo);
+        const dateCells = dates.map((d, di) => {
+          const dk = formatDate(d);
+          const dayItems = hullSched.filter(s => s.date === dk);
+          // 빈 날은 빈 셀
+          if (dayItems.length === 0) {
+            return `<td class="${di===5?'sat':di===6?'sun':''}" style="padding:4px;"></td>`;
+          }
+          // 각 건을 제품명+검사항목 쌍으로 묶어 표시 (박스로 시각 구분)
+          const pairs = dayItems.map((sc, si) => {
+            const prod = sc.productName || '';
+            const inspId = sc.inspItemId || '';
+            const inspName = sc.inspItemName || '';
+            const note = sc.note || '';
+            const color = getInspColor(inspId);
+            // 검사항목 색을 박스 테두리 포인트 색으로 활용
+            const borderColor = color ? color.text : '#94a3b8';
+            const badgeBg = color ? color.bg : '#f1f5f9';
+            const badgeText = color ? color.text : '#475569';
+            const marginTop = si > 0 ? 'margin-top:5px;' : '';
+            return `
+              <div style="border-left:3px solid ${borderColor};background:#fafbfc;border-radius:0 6px 6px 0;padding:3px 6px 3px 6px;${marginTop}">
+                ${prod ? `<div style="font-size:11px;font-weight:700;color:var(--text);line-height:1.4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${prod}</div>` : ''}
+                ${inspName ? `<div style="background:${badgeBg};color:${badgeText};border-radius:8px;padding:1px 7px;font-size:10px;font-weight:600;display:inline-block;margin-top:2px;white-space:nowrap;">${inspName}</div>` : ''}
+                ${note ? `<div style="font-size:9px;color:var(--text3);margin-top:1px;font-style:italic;">${note}</div>` : ''}
+              </div>`;
+          }).join('');
+          return `<td class="${di===5?'sat':di===6?'sun':''}" style="vertical-align:top;padding:4px 6px;min-width:110px;">${pairs}</td>`;
+        }).join('');
+
+        return `
+          <tr>
+            ${hi===0 ? `<td rowspan="${compHulls.length}" style="background:var(--navy2);color:#fff;font-size:12px;font-weight:700;text-align:center;vertical-align:middle;padding:6px 8px;white-space:nowrap;border:1px solid #1a3460;min-width:90px;">
+              ${compName}
+            </td>` : ''}
+            <td style="background:var(--navy);color:#fff;font-size:12px;font-weight:700;text-align:center;vertical-align:middle;padding:6px 8px;white-space:nowrap;border:1px solid #2a4a7f;min-width:80px;">
+              <div class="mono">${hullNo}</div>
+            </td>
+            ${dateCells}
+          </tr>`;
+      }).join(`<tr style="display:none;"></tr>`);
+
+      return hullRows;
+    }).filter(Boolean).join(`<tr><td colspan="11" style="height:4px;background:var(--navy);padding:0;opacity:.2;"></td></tr>`);
+
+    return `
+      <div class="project-schedule-card" style="margin-bottom:16px;">
+        <div class="project-schedule-header" style="display:flex;align-items:center;justify-content:space-between;">
+          <div>
+            <div class="project-schedule-title">📅 ${week} ~ ${formatDate(weekEnd)} ${lang.week}</div>
+            <div class="project-schedule-meta">📁 ${proj.name} &nbsp;·&nbsp; ${lang.shiptype}: ${proj.owner||'-'} &nbsp;·&nbsp; ${allHulls.length} ${lang.ships}</div>
+          </div>
+        </div>
+        <div style="overflow-x:auto;">
+          <table class="cal-view-table" style="min-width:750px;">
+            <thead>
+              <tr>
+                <th style="min-width:90px;">${lang.company}</th>
+                <th style="min-width:80px;">${lang.hull}</th>
+                ${dates.map((d,i) => `<th class="${i===5?'sat':i===6?'sun':''}" style="min-width:85px;">${d.getMonth()+1}/${d.getDate()}<br><span style="font-size:9px;opacity:.7;">${lang.days[i]}</span></th>`).join('')}
+              </tr>
+            </thead>
+            <tbody>${compRows}</tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  container.innerHTML = weekBlocks || `<div class="empty-state"><div class="empty-state-icon">📋</div><div class="empty-state-text">등록된 일정이 없습니다</div></div>`;
+}
+
+function printOwnerView() {
+  window.print();
+}
+
+// ══════════════════════════════════════════════════════════════
+// 유틸
+// ══════════════════════════════════════════════════════════════
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+}
+document.querySelectorAll('.modal-overlay').forEach(m => {
+  m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); });
+});
+
+function showToast(msg, type='success') {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = `toast ${type} show`;
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// 초기화
+initLoginSelect();
+</script>
+</body>
+</html>
