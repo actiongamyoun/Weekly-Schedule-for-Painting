@@ -30,11 +30,7 @@ pool.query("SELECT 1")
   .then(() => console.log("✅ DB connected"))
   .catch((err) => console.error("❌ DB connect failed", err));
 // ── 미들웨어 ─────────────────────────────────────
-const allowedOrigins = (process.env.FRONTEND_URL || '')
-  .split(',')
-  .map(s => s.trim())
-  .filter(Boolean);
-
+const allowedOrigins = [];
 // CORS: FRONTEND_URL이 비어있으면(설정 안 했으면) 모든 Origin 허용(권장: 운영에서는 FRONTEND_URL 지정)
 const corsOptions = {
   origin: (origin, cb) => {
