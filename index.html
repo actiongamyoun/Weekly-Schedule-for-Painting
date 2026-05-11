@@ -561,15 +561,20 @@ let fPjId = null, admFPjId = null;
 let D = { cos:[], pjs:[], ships:[], types:[], insps:[] };
 
 // ── 공지사항 (localStorage) ──
-let NOTICES = []; // [{id, text, date}]
-function loadNotices(){ try{ NOTICES=JSON.parse(localStorage.getItem('wimp_notices')||'[]'); }catch(e){ NOTICES=[]; } }
-function saveNotices(){ localStorage.setItem('wimp_notices', JSON.stringify(NOTICES)); }
+let NOTICES = [];
+async function loadNotices(){
+  if(DEMO){ NOTICES=[]; return; }
+  try{
+    const {data,error}=await SB.from('notices').select('*').order('created_at',{ascending:false});
+    if(error) throw error;
+    NOTICES=data||[];
+  }catch(e){ NOTICES=[]; }
+}
 function renderNoticeBanner(){
   const el=document.getElementById('notice-cards'); if(!el) return;
   const active=NOTICES.filter(n=>n.text);
   if(!active.length){ el.style.display='none'; return; }
-  // 최근 3개만 (뒤에서부터)
-  const show=[...active].reverse().slice(0,3);
+  const show=active.slice(0,3);
   el.style.display='block';
   el.innerHTML=`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
     ${show.map(n=>`
@@ -590,7 +595,7 @@ function renderNoticeSet(){
     <div class="li">
       <span style="flex:1;font-size:12px;">${n.text}</span>
       <span style="font-size:10px;color:var(--muted);margin-right:8px;">${n.date||''}</span>
-      <span class="li-del" onclick="delNotice('${n.id}')">✕</span>
+      <span class="li-del" onclick="delNotice(${n.id})">✕</span>
     </div>`).join('');
 }
 function addNotice(){
@@ -598,19 +603,21 @@ function addNotice(){
   document.getElementById('simple-body').innerHTML=`
     <div class="fg"><label class="fl">공지 내용</label><input class="fc" id="n-notice" placeholder="예: 이번 주 금요일 검사 일정 확인 바랍니다"></div>
     <div class="fg"><label class="fl">날짜 (선택)</label><input type="date" class="fc" id="n-notice-date"></div>`;
-  document.getElementById('simple-ok').onclick=()=>{
+  document.getElementById('simple-ok').onclick=async()=>{
     const text=document.getElementById('n-notice').value.trim();
-    if(!text) return;
+    if(!text){ toast('내용을 입력해주세요','err'); return; }
     const date=document.getElementById('n-notice-date').value||'';
-    NOTICES.push({id:Date.now().toString(), text, date});
-    saveNotices(); renderNoticeBanner(); renderNoticeSet();
+    const {error}=await SB.from('notices').insert({text,date:date||null});
+    if(error){ toast('오류: '+error.message,'err'); return; }
+    await loadNotices(); renderNoticeBanner(); renderNoticeSet();
     closeOv('ov-simple'); toast('공지사항 등록됨','ok');
   };
   showOv('ov-simple');
 }
-function delNotice(id){
-  NOTICES=NOTICES.filter(n=>n.id!==id);
-  saveNotices(); renderNoticeBanner(); renderNoticeSet();
+async function delNotice(id){
+  const {error}=await SB.from('notices').delete().eq('id',id);
+  if(error){ toast('오류: '+error.message,'err'); return; }
+  await loadNotices(); renderNoticeBanner(); renderNoticeSet();
   toast('공지사항 삭제됨','ok');
 }
 
@@ -686,7 +693,7 @@ async function startApp() {
   document.getElementById('page-main').style.display = 'flex';
   document.getElementById('page-main').style.flexDirection = 'column';
   loadHolidays();
-  loadNotices();
+  await loadNotices();
   await loadAll();
   render();
   cleanOld();
@@ -771,7 +778,10 @@ function renderCal() {
   const el1=document.getElementById('wklbl'); if(el1)el1.textContent=lbl;
   const el2=document.getElementById('wklbl2'); if(el2)el2.textContent=lbl;
 
-  const vis = selCoId ? D.cos.filter(c=>c.id===selCoId) : D.cos;
+  const wkInspCoIds = new Set(D.insps.filter(x=>inWk(x.date)&&(!fPjId||x.project_id===fPjId)).map(x=>x.company_id));
+  const vis = selCoId
+    ? D.cos.filter(c=>c.id===selCoId)
+    : D.cos.filter(c=>wkInspCoIds.has(c.id));
   let h = `<div class="cal-head"><div class="cal-hc" style="font-size:9px;">협력사</div>`;
   days.forEach((d,i)=>{
     const isTd=fmt(d)===today;
